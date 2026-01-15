@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import SeatingGrid from './components/SeatingGrid';
 import MemberSelector from './components/MemberSelector';
+import DataManager from './components/DataManager';
 import { SeatingMap, Member } from './types';
+import { loadFromLocalStorage } from './utils/storage';
 
 // 샘플 데이터
 const SAMPLE_LAYOUT: SeatingMap = {
@@ -49,7 +51,10 @@ const SAMPLE_LAYOUT: SeatingMap = {
 };
 
 function App() {
-    const [seatingMap, setSeatingMap] = useState<SeatingMap>(SAMPLE_LAYOUT);
+    const [seatingMap, setSeatingMap] = useState<SeatingMap>(() => {
+        const saved = loadFromLocalStorage();
+        return saved || SAMPLE_LAYOUT;
+    });
     const [selectedSeat, setSelectedSeat] = useState<{
         section: string;
         row: number;
@@ -113,14 +118,32 @@ function App() {
                         </div>
                     </div>
 
-                    {/* 멤버 선택 패널 */}
-                    <div className="lg:col-span-1">
-                        <MemberSelector
-                            members={seatingMap.members}
-                            selectedSeat={selectedSeat}
-                            onMemberSelect={handleMemberSelect}
-                            onClear={() => setSelectedSeat(null)}
-                        />
+                    {/* 사이드바 - 멤버 선택 및 데이터 관리 */}
+                    <div className="lg:col-span-1 space-y-6">
+                        {/* 데이터 관리 */}
+                        <div className="bg-white rounded-lg shadow-lg p-6">
+                            <h2 className="text-2xl font-bold mb-6 text-gray-800">
+                                📊 데이터 관리
+                            </h2>
+                            <DataManager
+                                data={seatingMap}
+                                onLoadData={setSeatingMap}
+                                onSaveSuccess={() => {
+                                    // 저장 성공 후 처리 (필요시)
+                                }}
+                            />
+                        </div>
+
+                        {/* 멤버 선택 */}
+                        <div className="bg-white rounded-lg shadow-lg p-6">
+                            <h2 className="text-2xl font-bold mb-6 text-gray-800">👥 멤버 배정</h2>
+                            <MemberSelector
+                                members={seatingMap.members}
+                                selectedSeat={selectedSeat}
+                                onMemberSelect={handleMemberSelect}
+                                onClear={() => setSelectedSeat(null)}
+                            />
+                        </div>
                     </div>
                 </div>
             </main>
