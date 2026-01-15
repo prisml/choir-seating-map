@@ -2,7 +2,7 @@ import { useState } from 'react';
 import SeatingGrid from './components/SeatingGrid';
 import MemberSelector from './components/MemberSelector';
 import DataManager from './components/DataManager';
-import { SeatingMap, Member } from './types';
+import { SeatingMap } from './types';
 import { loadFromLocalStorage } from './utils/storage';
 
 // 샘플 데이터
@@ -91,8 +91,8 @@ function App() {
         <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
             <header className="bg-white shadow-md">
                 <div className="max-w-7xl mx-auto py-6 px-4">
-                    <h1 className="text-4xl font-bold text-gray-900">🎵 Choir Seating Map</h1>
-                    <p className="text-gray-600 mt-2">합창단 좌석 배치도 관리 시스템</p>
+                    <h1 className="text-4xl font-bold text-gray-900">🎵 감사넘치는찬양대</h1>
+                    <p className="text-gray-600 mt-2">찬양대 좌석 배치도 관리 시스템</p>
                 </div>
             </header>
 
