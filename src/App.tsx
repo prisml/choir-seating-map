@@ -2,7 +2,8 @@ import { useState } from 'react';
 import SeatingGrid from './components/SeatingGrid';
 import MemberSelector from './components/MemberSelector';
 import DataManager from './components/DataManager';
-import { SeatingMap } from './types';
+import LayoutEditor from './components/LayoutEditor';
+import { SeatingMap, Section } from './types';
 import { loadFromLocalStorage } from './utils/storage';
 
 // 샘플 데이터
@@ -60,9 +61,19 @@ function App() {
         row: number;
         seat: number;
     } | null>(null);
+    const [showLayoutEditor, setShowLayoutEditor] = useState(false);
 
     const handleSeatClick = (section: string, row: number, seat: number) => {
         setSelectedSeat({ section, row, seat });
+    };
+
+    const handleUpdateLayout = (sections: Record<string, Section>) => {
+        setSeatingMap((prev) => ({
+            ...prev,
+            sections,
+            // 삭제된 섹션의 좌석 배정 정리
+            seats: Object.fromEntries(Object.entries(prev.seats).filter(([key]) => sections[key])),
+        }));
     };
 
     const handleMemberSelect = (memberId: string) => {
@@ -101,7 +112,15 @@ function App() {
                     {/* 좌석 배치도 */}
                     <div className="lg:col-span-2">
                         <div className="bg-white rounded-lg shadow-lg p-6">
-                            <h2 className="text-2xl font-bold mb-6 text-gray-800">좌석 배치도</h2>
+                            <div className="flex justify-between items-center mb-6">
+                                <h2 className="text-2xl font-bold text-gray-800">좌석 배치도</h2>
+                                <button
+                                    onClick={() => setShowLayoutEditor(true)}
+                                    className="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 font-semibold text-sm"
+                                >
+                                    🎹 레이아웃 설정
+                                </button>
+                            </div>
                             <div className="space-y-8">
                                 {Object.keys(seatingMap.sections).map((section) => (
                                     <SeatingGrid
@@ -147,6 +166,15 @@ function App() {
                     </div>
                 </div>
             </main>
+
+            {/* 레이아웃 에디터 모달 */}
+            {showLayoutEditor && (
+                <LayoutEditor
+                    seatingMap={seatingMap}
+                    onUpdateLayout={handleUpdateLayout}
+                    onClose={() => setShowLayoutEditor(false)}
+                />
+            )}
         </div>
     );
 }
