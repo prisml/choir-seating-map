@@ -16,8 +16,14 @@ export default function SeatingGrid({
     isSelected,
 }: SeatingGridProps) {
     return (
-        <div className="border-2 border-gray-300 rounded-lg p-4 bg-gray-50">
-            <h3 className="text-xl font-bold mb-4 text-gray-800">{section}석</h3>
+        <div
+            className={`border-2 rounded-lg p-4 bg-gray-50 ${isSelected ? 'border-indigo-500 shadow-md' : 'border-gray-300'}`}
+        >
+            <h3
+                className={`text-xl font-bold mb-4 ${isSelected ? 'text-indigo-700' : 'text-gray-800'}`}
+            >
+                {section}석
+            </h3>
             <div className="space-y-3">
                 {Object.entries(rows).map(([rowNum, seatCount]) => (
                     <div key={rowNum} className="flex items-center gap-4">

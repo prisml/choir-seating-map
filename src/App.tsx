@@ -3,7 +3,8 @@ import SeatingGrid from './components/SeatingGrid';
 import MemberSelector from './components/MemberSelector';
 import DataManager from './components/DataManager';
 import LayoutEditor from './components/LayoutEditor';
-import { SeatingMap, Section } from './types';
+import MemberManager from './components/MemberManager';
+import { SeatingMap, Section, Member } from './types';
 import { loadFromLocalStorage } from './utils/storage';
 
 // 샘플 데이터
@@ -62,6 +63,7 @@ function App() {
         seat: number;
     } | null>(null);
     const [showLayoutEditor, setShowLayoutEditor] = useState(false);
+    const [showMemberManager, setShowMemberManager] = useState(false);
 
     const handleSeatClick = (section: string, row: number, seat: number) => {
         setSelectedSeat({ section, row, seat });
@@ -73,6 +75,27 @@ function App() {
             sections,
             // 삭제된 섹션의 좌석 배정 정리
             seats: Object.fromEntries(Object.entries(prev.seats).filter(([key]) => sections[key])),
+        }));
+    };
+
+    const handleUpdateMembers = (members: Record<string, Member>) => {
+        setSeatingMap((prev) => ({
+            ...prev,
+            members,
+            // 삭제된 멤버의 좌석 배정 정리
+            seats: Object.fromEntries(
+                Object.entries(prev.seats).map(([section, rows]) => [
+                    section,
+                    Object.fromEntries(
+                        Object.entries(rows).map(([row, seats]) => [
+                            row,
+                            Object.fromEntries(
+                                Object.entries(seats).filter(([_, memberId]) => members[memberId]),
+                            ),
+                        ]),
+                    ),
+                ]),
+            ),
         }));
     };
 
@@ -102,8 +125,20 @@ function App() {
         <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
             <header className="bg-white shadow-md">
                 <div className="max-w-7xl mx-auto py-6 px-4">
-                    <h1 className="text-4xl font-bold text-gray-900">🎵 감사넘치는찬양대</h1>
-                    <p className="text-gray-600 mt-2">찬양대 좌석 배치도 관리 시스템</p>
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <h1 className="text-4xl font-bold text-gray-900">
+                                🎵 Choir Seating Map
+                            </h1>
+                            <p className="text-gray-600 mt-2">합창단 좌석 배치도 관리 시스템</p>
+                        </div>
+                        <button
+                            onClick={() => setShowMemberManager(true)}
+                            className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold shadow-lg"
+                        >
+                            👥 멤버 관리
+                        </button>
+                    </div>
                 </div>
             </header>
 
@@ -174,6 +209,29 @@ function App() {
                     onUpdateLayout={handleUpdateLayout}
                     onClose={() => setShowLayoutEditor(false)}
                 />
+            )}
+
+            {/* 멤버 관리 모달 */}
+            {showMemberManager && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+                        <div className="bg-indigo-600 text-white p-4 flex justify-between items-center">
+                            <h2 className="text-xl font-bold">👥 멤버 관리</h2>
+                            <button
+                                onClick={() => setShowMemberManager(false)}
+                                className="text-white hover:text-gray-200 text-2xl font-bold"
+                            >
+                                ×
+                            </button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-6">
+                            <MemberManager
+                                members={seatingMap.members}
+                                onUpdateMembers={handleUpdateMembers}
+                            />
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );
