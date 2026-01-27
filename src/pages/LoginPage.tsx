@@ -1,18 +1,24 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
 
 type AuthMode = 'login' | 'signup';
 
 export default function LoginPage() {
+    const navigate = useNavigate();
+    const { signIn, signUp } = useAuth();
     const [mode, setMode] = useState<AuthMode>('login');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [error, setError] = useState<string | null>(null);
+    const [success, setSuccess] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
+        setSuccess(null);
 
         if (mode === 'signup' && password !== confirmPassword) {
             setError('비밀번호가 일치하지 않습니다.');
@@ -21,8 +27,14 @@ export default function LoginPage() {
 
         setLoading(true);
         try {
-            // TODO: Supabase 인증 연동 예정
-            console.log(mode === 'login' ? '로그인' : '회원가입', { email, password });
+            if (mode === 'login') {
+                await signIn(email, password);
+                navigate('/');
+            } else {
+                await signUp(email, password);
+                setSuccess('회원가입이 완료되었습니다! 이메일을 확인해주세요.');
+                setMode('login');
+            }
         } catch (err) {
             setError(err instanceof Error ? err.message : '오류가 발생했습니다.');
         } finally {
@@ -68,6 +80,13 @@ export default function LoginPage() {
                 {error && (
                     <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
                         {error}
+                    </div>
+                )}
+
+                {/* 성공 메시지 */}
+                {success && (
+                    <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
+                        {success}
                     </div>
                 )}
 
