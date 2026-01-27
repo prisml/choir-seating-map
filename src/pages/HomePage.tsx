@@ -1,9 +1,11 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import SeatingGrid from '../components/SeatingGrid';
 import MemberSelector from '../components/MemberSelector';
 import DataManager from '../components/DataManager';
 import LayoutEditor from '../components/LayoutEditor';
 import MemberManager from '../components/MemberManager';
+import { useAuth } from '../hooks/useAuth';
 import { SeatingMap, Section, Member } from '../types';
 import { loadFromLocalStorage } from '../utils/storage';
 
@@ -53,6 +55,8 @@ const SAMPLE_LAYOUT: SeatingMap = {
 };
 
 export default function HomePage() {
+    const navigate = useNavigate();
+    const { user, signOut } = useAuth();
     const [seatingMap, setSeatingMap] = useState<SeatingMap>(() => {
         const saved = loadFromLocalStorage();
         return saved || SAMPLE_LAYOUT;
@@ -64,6 +68,11 @@ export default function HomePage() {
     } | null>(null);
     const [showLayoutEditor, setShowLayoutEditor] = useState(false);
     const [showMemberManager, setShowMemberManager] = useState(false);
+
+    const handleSignOut = async () => {
+        await signOut();
+        navigate('/login');
+    };
 
     const handleSeatClick = (section: string, row: number, seat: number) => {
         setSelectedSeat({ section, row, seat });
@@ -132,12 +141,21 @@ export default function HomePage() {
                             </h1>
                             <p className="text-gray-600 mt-2">합창단 좌석 배치도 관리 시스템</p>
                         </div>
-                        <button
-                            onClick={() => setShowMemberManager(true)}
-                            className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold shadow-lg"
-                        >
-                            👥 멤버 관리
-                        </button>
+                        <div className="flex items-center gap-4">
+                            <span className="text-sm text-gray-600">{user?.email}</span>
+                            <button
+                                onClick={() => setShowMemberManager(true)}
+                                className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold shadow-lg"
+                            >
+                                👥 멤버 관리
+                            </button>
+                            <button
+                                onClick={handleSignOut}
+                                className="px-4 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 font-semibold"
+                            >
+                                로그아웃
+                            </button>
+                        </div>
                     </div>
                 </div>
             </header>
