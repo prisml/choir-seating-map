@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SeatingGrid from '../components/SeatingGrid';
 import MemberSelector from '../components/MemberSelector';
@@ -8,59 +8,20 @@ import MemberManager from '../components/MemberManager';
 import { useAuth } from '../hooks/useAuth';
 import { SeatingMap, Section, Member } from '../types';
 import { loadFromLocalStorage } from '../utils/storage';
+import { loadSeatingMapFromSupabase } from '../services/seatingService';
 
-// 샘플 데이터
-const SAMPLE_LAYOUT: SeatingMap = {
-    sections: {
-        A: {
-            rows: {
-                1: 4,
-                2: 8,
-                3: 8,
-                4: 8,
-                5: 9,
-                6: 8,
-                7: 8,
-                8: 8,
-                9: 8,
-                10: 8,
-                11: 7,
-                12: 7,
-            },
-        },
-        B: {
-            rows: {
-                1: 6,
-                2: 6,
-                3: 6,
-                4: 6,
-                5: 6,
-                6: 6,
-                7: 6,
-                8: 6,
-                9: 5,
-                10: 5,
-                11: 5,
-                12: 5,
-            },
-        },
-    },
+// 빈 초기 데이터
+const EMPTY_LAYOUT: SeatingMap = {
+    sections: {},
     seats: {},
-    members: {
-        m1: { id: 'm1', name: 'Kim', part: 'Soprano', group: '1' },
-        m2: { id: 'm2', name: 'Lee', part: 'Alto', group: '1' },
-        m3: { id: 'm3', name: 'Park', part: 'Tenor', group: '2' },
-        m4: { id: 'm4', name: 'Choi', part: 'Bass', group: '2' },
-    },
+    members: {},
 };
 
 export default function HomePage() {
     const navigate = useNavigate();
     const { user, signOut } = useAuth();
-    const [seatingMap, setSeatingMap] = useState<SeatingMap>(() => {
-        const saved = loadFromLocalStorage();
-        return saved || SAMPLE_LAYOUT;
-    });
+    const [seatingMap, setSeatingMap] = useState<SeatingMap>(EMPTY_LAYOUT);
+    const [loading, setLoading] = useState(true);
     const [selectedSeat, setSelectedSeat] = useState<{
         section: string;
         row: number;
@@ -68,6 +29,34 @@ export default function HomePage() {
     } | null>(null);
     const [showLayoutEditor, setShowLayoutEditor] = useState(false);
     const [showMemberManager, setShowMemberManager] = useState(false);
+
+    // 초기 데이터 로드 (클라우드 → 로컬 스토리지 순)
+    useEffect(() => {
+        const loadInitialData = async () => {
+            if (!user) {
+                setLoading(false);
+                return;
+            }
+
+            // 1. 클라우드에서 먼저 시도
+            const cloudData = await loadSeatingMapFromSupabase(user.id);
+            if (cloudData) {
+                setSeatingMap(cloudData);
+                setLoading(false);
+                return;
+            }
+
+            // 2. 클라우드 데이터 없으면 로컬 스토리지에서 로드
+            const localData = loadFromLocalStorage();
+            if (localData) {
+                setSeatingMap(localData);
+            }
+
+            setLoading(false);
+        };
+
+        loadInitialData();
+    }, [user]);
 
     const handleSignOut = async () => {
         await signOut();
@@ -161,6 +150,14 @@ export default function HomePage() {
             </header>
 
             <main className="max-w-7xl mx-auto py-8 px-4">
+                {loading ? (
+                    <div className="flex items-center justify-center py-20">
+                        <div className="text-center">
+                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+                            <p className="text-gray-600">데이터를 불러오는 중...</p>
+                        </div>
+                    </div>
+                ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* 좌석 배치도 */}
                     <div className="lg:col-span-2">
@@ -174,6 +171,14 @@ export default function HomePage() {
                                     🎹 레이아웃 설정
                                 </button>
                             </div>
+                            {Object.keys(seatingMap.sections).length === 0 ? (
+                                <div className="text-center py-12 text-gray-500">
+                                    <p className="text-4xl mb-4">🎹</p>
+                                    <p className="text-lg font-semibold mb-2">좌석 배치가 없습니다</p>
+                                    <p className="text-sm">위의 "레이아웃 설정" 버튼을 눌러 섹션을 추가하거나,</p>
+                                    <p className="text-sm">오른쪽 데이터 관리에서 클라우드/로컬 데이터를 불러오세요.</p>
+                                </div>
+                            ) : (
                             <div className="space-y-8">
                                 {Object.keys(seatingMap.sections).map((section) => (
                                     <SeatingGrid
@@ -187,6 +192,7 @@ export default function HomePage() {
                                     />
                                 ))}
                             </div>
+                            )}
                         </div>
                     </div>
 
@@ -218,6 +224,7 @@ export default function HomePage() {
                         </div>
                     </div>
                 </div>
+                )}
             </main>
 
             {/* 레이아웃 에디터 모달 */}

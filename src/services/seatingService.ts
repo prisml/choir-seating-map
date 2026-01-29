@@ -2,13 +2,12 @@ import { supabase } from '../lib/supabase';
 import { SeatingMap, Member, Section } from '../types';
 
 // Supabase에서 전체 데이터 불러오기
-export async function loadSeatingMapFromSupabase(userId: string): Promise<SeatingMap | null> {
+export async function loadSeatingMapFromSupabase(_userId: string): Promise<SeatingMap | null> {
     try {
         // 섹션 불러오기
         const { data: sectionsData, error: sectionsError } = await supabase
             .from('sections')
             .select('*')
-            .eq('user_id', userId)
             .order('display_order');
 
         if (sectionsError) throw sectionsError;
@@ -32,8 +31,7 @@ export async function loadSeatingMapFromSupabase(userId: string): Promise<Seatin
         // 멤버 불러오기
         const { data: membersData, error: membersError } = await supabase
             .from('members')
-            .select('*')
-            .eq('user_id', userId);
+            .select('*');
 
         if (membersError) throw membersError;
 
@@ -89,30 +87,44 @@ export async function loadSeatingMapFromSupabase(userId: string): Promise<Seatin
 
 // Supabase에 전체 데이터 저장하기
 export async function saveSeatingMapToSupabase(
-    userId: string,
+    _userId: string,
     seatingMap: SeatingMap
 ): Promise<boolean> {
     try {
-        // 1. 기존 섹션 삭제 (cascade로 rows, seats도 삭제됨)
-        const { error: deleteError } = await supabase
+        // 1. 기존 데이터 모두 삭제
+        // seats는 section_id FK로 cascade 삭제됨
+        // section_rows도 section_id FK로 cascade 삭제됨
+        const { error: deleteSeatsError } = await supabase
+            .from('seats')
+            .delete()
+            .neq('id', '00000000-0000-0000-0000-000000000000'); // 모든 행 삭제
+
+        if (deleteSeatsError) throw deleteSeatsError;
+
+        const { error: deleteRowsError } = await supabase
+            .from('section_rows')
+            .delete()
+            .neq('id', '00000000-0000-0000-0000-000000000000');
+
+        if (deleteRowsError) throw deleteRowsError;
+
+        const { error: deleteSectionsError } = await supabase
             .from('sections')
             .delete()
-            .eq('user_id', userId);
+            .neq('id', '00000000-0000-0000-0000-000000000000');
 
-        if (deleteError) throw deleteError;
+        if (deleteSectionsError) throw deleteSectionsError;
 
-        // 2. 기존 멤버 삭제
         const { error: deleteMembersError } = await supabase
             .from('members')
             .delete()
-            .eq('user_id', userId);
+            .neq('id', '00000000-0000-0000-0000-000000000000');
 
         if (deleteMembersError) throw deleteMembersError;
 
-        // 3. 멤버 저장
+        // 2. 멤버 저장
         const membersToInsert = Object.values(seatingMap.members).map(member => ({
             id: member.id,
-            user_id: userId,
             name: member.name,
             part: member.part,
             group: member.group,
@@ -126,10 +138,9 @@ export async function saveSeatingMapToSupabase(
             if (membersError) throw membersError;
         }
 
-        // 4. 섹션 저장
+        // 3. 섹션 저장
         const sectionNames = Object.keys(seatingMap.sections);
         const sectionsToInsert = sectionNames.map((name, index) => ({
-            user_id: userId,
             name,
             display_order: index,
         }));
