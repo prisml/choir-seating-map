@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { SeatingMap } from '../types';
+import { useAuth } from '../hooks/useAuth';
 import {
     saveToLocalStorage,
     loadFromLocalStorage,
@@ -7,6 +8,10 @@ import {
     loadFromJSON,
     exportAsCSV,
 } from '../utils/storage';
+import {
+    loadSeatingMapFromSupabase,
+    saveSeatingMapToSupabase,
+} from '../services/seatingService';
 
 interface DataManagerProps {
     data: SeatingMap;
@@ -15,9 +20,11 @@ interface DataManagerProps {
 }
 
 export default function DataManager({ data, onLoadData, onSaveSuccess }: DataManagerProps) {
+    const { user } = useAuth();
     const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(
         null
     );
+    const [cloudLoading, setCloudLoading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const showMessage = (text: string, type: 'success' | 'error' = 'success') => {
@@ -86,6 +93,52 @@ export default function DataManager({ data, onLoadData, onSaveSuccess }: DataMan
         }
     };
 
+    // 클라우드 저장 (Supabase)
+    const handleCloudSave = async () => {
+        if (!user) {
+            showMessage('로그인이 필요합니다', 'error');
+            return;
+        }
+
+        setCloudLoading(true);
+        try {
+            const success = await saveSeatingMapToSupabase(user.id, data);
+            if (success) {
+                showMessage('클라우드에 저장되었습니다 ☁️', 'success');
+                onSaveSuccess();
+            } else {
+                showMessage('클라우드 저장에 실패했습니다', 'error');
+            }
+        } catch (error) {
+            showMessage('클라우드 저장에 실패했습니다', 'error');
+        } finally {
+            setCloudLoading(false);
+        }
+    };
+
+    // 클라우드 로드 (Supabase)
+    const handleCloudLoad = async () => {
+        if (!user) {
+            showMessage('로그인이 필요합니다', 'error');
+            return;
+        }
+
+        setCloudLoading(true);
+        try {
+            const loadedData = await loadSeatingMapFromSupabase(user.id);
+            if (loadedData) {
+                onLoadData(loadedData);
+                showMessage('클라우드에서 불러왔습니다 ☁️', 'success');
+            } else {
+                showMessage('클라우드에 저장된 데이터가 없습니다', 'error');
+            }
+        } catch (error) {
+            showMessage('클라우드 로드에 실패했습니다', 'error');
+        } finally {
+            setCloudLoading(false);
+        }
+    };
+
     return (
         <div className="space-y-4">
             {/* 메시지 표시 */}
@@ -100,6 +153,27 @@ export default function DataManager({ data, onLoadData, onSaveSuccess }: DataMan
                     {message.text}
                 </div>
             )}
+
+            {/* 클라우드 저장/로드 (Supabase) */}
+            <div className="space-y-2">
+                <p className="text-xs font-bold text-gray-600">☁️ 클라우드 저장소</p>
+                <div className="flex gap-2">
+                    <button
+                        onClick={handleCloudSave}
+                        disabled={cloudLoading}
+                        className="flex-1 px-3 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition-all font-semibold text-sm disabled:opacity-50"
+                    >
+                        {cloudLoading ? '처리 중...' : '☁️ 클라우드 저장'}
+                    </button>
+                    <button
+                        onClick={handleCloudLoad}
+                        disabled={cloudLoading}
+                        className="flex-1 px-3 py-2 bg-cyan-500 text-white rounded-lg hover:bg-cyan-600 transition-all font-semibold text-sm disabled:opacity-50"
+                    >
+                        {cloudLoading ? '처리 중...' : '📥 클라우드 로드'}
+                    </button>
+                </div>
+            </div>
 
             {/* 자동 저장/로드 */}
             <div className="space-y-2">
@@ -161,6 +235,7 @@ export default function DataManager({ data, onLoadData, onSaveSuccess }: DataMan
             <div className="bg-gray-50 border-2 border-gray-300 rounded-lg p-3 text-xs text-gray-700">
                 <p className="font-semibold mb-1">💡 팁:</p>
                 <ul className="space-y-1 list-disc list-inside">
+                    <li>클라우드 저장: 어디서든 접근 가능 (로그인 필요)</li>
                     <li>자동 저장: 브라우저에 저장 (휴지통 정리 시 삭제)</li>
                     <li>JSON 다운로드: 파일로 백업 (언제든 복원 가능)</li>
                     <li>CSV 내보내기: 엑셀에서 열기 가능</li>
