@@ -16,7 +16,7 @@ export async function loadSeatingMapFromSupabase(_userId: string): Promise<Seati
         const { data: rowsData, error: rowsError } = await supabase
             .from('section_rows')
             .select('*')
-            .in('section_id', sectionsData?.map(s => s.id) || []);
+            .in('section_id', sectionsData?.map((s) => s.id) || []);
 
         if (rowsError) throw rowsError;
 
@@ -24,7 +24,7 @@ export async function loadSeatingMapFromSupabase(_userId: string): Promise<Seati
         const { data: seatsData, error: seatsError } = await supabase
             .from('seats')
             .select('*')
-            .in('section_id', sectionsData?.map(s => s.id) || []);
+            .in('section_id', sectionsData?.map((s) => s.id) || []);
 
         if (seatsError) throw seatsError;
 
@@ -44,19 +44,19 @@ export async function loadSeatingMapFromSupabase(_userId: string): Promise<Seati
         const sections: Record<string, Section> = {};
         const seats: Record<string, Record<number, Record<string, string>>> = {};
 
-        sectionsData.forEach(section => {
-            const sectionRows = rowsData?.filter(r => r.section_id === section.id) || [];
+        sectionsData.forEach((section) => {
+            const sectionRows = rowsData?.filter((r) => r.section_id === section.id) || [];
             const rows: Record<number, number> = {};
-            sectionRows.forEach(row => {
+            sectionRows.forEach((row) => {
                 rows[row.row_num] = row.seat_count;
             });
             sections[section.name] = { rows };
 
             // 좌석 배정
-            const sectionSeats = seatsData?.filter(s => s.section_id === section.id) || [];
+            const sectionSeats = seatsData?.filter((s) => s.section_id === section.id) || [];
             if (sectionSeats.length > 0) {
                 seats[section.name] = {};
-                sectionSeats.forEach(seat => {
+                sectionSeats.forEach((seat) => {
                     if (seat.member_id) {
                         if (!seats[section.name][seat.row_num]) {
                             seats[section.name][seat.row_num] = {};
@@ -69,7 +69,7 @@ export async function loadSeatingMapFromSupabase(_userId: string): Promise<Seati
 
         // 멤버 변환
         const members: Record<string, Member> = {};
-        membersData?.forEach(member => {
+        membersData?.forEach((member) => {
             members[member.id] = {
                 id: member.id,
                 name: member.name,
@@ -88,54 +88,70 @@ export async function loadSeatingMapFromSupabase(_userId: string): Promise<Seati
 // Supabase에 전체 데이터 저장하기
 export async function saveSeatingMapToSupabase(
     _userId: string,
-    seatingMap: SeatingMap
+    seatingMap: SeatingMap,
 ): Promise<boolean> {
     try {
-        // 1. 기존 데이터 모두 삭제
-        // seats는 section_id FK로 cascade 삭제됨
-        // section_rows도 section_id FK로 cascade 삭제됨
+        // 1. 기존 데이터 모두 삭제 (순서 중요: FK 관계 때문에 seats -> section_rows -> sections)
         const { error: deleteSeatsError } = await supabase
             .from('seats')
             .delete()
-            .neq('id', '00000000-0000-0000-0000-000000000000'); // 모든 행 삭제
+            .gte('id', '00000000-0000-0000-0000-000000000000'); // 모든 행 삭제
 
-        if (deleteSeatsError) throw deleteSeatsError;
+        if (deleteSeatsError) {
+            console.error('seats 삭제 실패:', deleteSeatsError);
+            throw deleteSeatsError;
+        }
 
         const { error: deleteRowsError } = await supabase
             .from('section_rows')
             .delete()
-            .neq('id', '00000000-0000-0000-0000-000000000000');
+            .gte('id', '00000000-0000-0000-0000-000000000000');
 
-        if (deleteRowsError) throw deleteRowsError;
+        if (deleteRowsError) {
+            console.error('section_rows 삭제 실패:', deleteRowsError);
+            throw deleteRowsError;
+        }
 
         const { error: deleteSectionsError } = await supabase
             .from('sections')
             .delete()
-            .neq('id', '00000000-0000-0000-0000-000000000000');
+            .gte('id', '00000000-0000-0000-0000-000000000000');
 
-        if (deleteSectionsError) throw deleteSectionsError;
+        if (deleteSectionsError) {
+            console.error('sections 삭제 실패:', deleteSectionsError);
+            throw deleteSectionsError;
+        }
 
         const { error: deleteMembersError } = await supabase
             .from('members')
             .delete()
-            .neq('id', '00000000-0000-0000-0000-000000000000');
+            .gte('id', '00000000-0000-0000-0000-000000000000');
 
-        if (deleteMembersError) throw deleteMembersError;
+        if (deleteMembersError) {
+            console.error('members 삭제 실패:', deleteMembersError);
+            throw deleteMembersError;
+        }
 
-        // 2. 멤버 저장
-        const membersToInsert = Object.values(seatingMap.members).map(member => ({
-            id: member.id,
-            name: member.name,
-            part: member.part,
-            group: member.group,
-        }));
+        // 2. 멤버 저장 (id는 자동 생성되도록 제외, 대신 old_id로 매핑)
+        const memberIdMap: Record<string, string> = {}; // old_id -> new_id
 
-        if (membersToInsert.length > 0) {
-            const { error: membersError } = await supabase
+        for (const member of Object.values(seatingMap.members)) {
+            const { data: insertedMember, error: memberError } = await supabase
                 .from('members')
-                .insert(membersToInsert);
+                .insert({
+                    name: member.name,
+                    part: member.part,
+                    group: member.group,
+                })
+                .select()
+                .single();
 
-            if (membersError) throw membersError;
+            if (memberError) {
+                console.error('멤버 저장 실패:', memberError);
+                throw memberError;
+            }
+
+            memberIdMap[member.id] = insertedMember.id;
         }
 
         // 3. 섹션 저장
@@ -159,7 +175,7 @@ export async function saveSeatingMapToSupabase(
             seat_count: number;
         }> = [];
 
-        insertedSections?.forEach(section => {
+        insertedSections?.forEach((section) => {
             const sectionData = seatingMap.sections[section.name];
             Object.entries(sectionData.rows).forEach(([rowNum, seatCount]) => {
                 rowsToInsert.push({
@@ -171,14 +187,12 @@ export async function saveSeatingMapToSupabase(
         });
 
         if (rowsToInsert.length > 0) {
-            const { error: rowsError } = await supabase
-                .from('section_rows')
-                .insert(rowsToInsert);
+            const { error: rowsError } = await supabase.from('section_rows').insert(rowsToInsert);
 
             if (rowsError) throw rowsError;
         }
 
-        // 6. 좌석 배정 저장
+        // 4. 좌석 배정 저장 (member_id를 새 UUID로 매핑)
         const seatsToInsert: Array<{
             section_id: string;
             row_num: number;
@@ -186,31 +200,37 @@ export async function saveSeatingMapToSupabase(
             member_id: string;
         }> = [];
 
-        insertedSections?.forEach(section => {
+        insertedSections?.forEach((section) => {
             const sectionSeats = seatingMap.seats[section.name];
             if (sectionSeats) {
                 Object.entries(sectionSeats).forEach(([rowNum, rowSeats]) => {
-                    Object.entries(rowSeats).forEach(([seatKey, memberId]) => {
-                        const seatNum = parseInt(seatKey.replace('Seat', ''));
-                        seatsToInsert.push({
-                            section_id: section.id,
-                            row_num: parseInt(rowNum),
-                            seat_num: seatNum,
-                            member_id: memberId,
-                        });
+                    Object.entries(rowSeats).forEach(([seatKey, oldMemberId]) => {
+                        const newMemberId = memberIdMap[oldMemberId];
+                        if (newMemberId) {
+                            const seatNum = parseInt(seatKey.replace('Seat', ''));
+                            seatsToInsert.push({
+                                section_id: section.id,
+                                row_num: parseInt(rowNum),
+                                seat_num: seatNum,
+                                member_id: newMemberId,
+                            });
+                        }
                     });
                 });
             }
         });
 
         if (seatsToInsert.length > 0) {
-            const { error: seatsError } = await supabase
-                .from('seats')
-                .insert(seatsToInsert);
+            console.log('좌석 데이터 삽입 시도:', JSON.stringify(seatsToInsert, null, 2));
+            const { error: seatsError } = await supabase.from('seats').insert(seatsToInsert);
 
-            if (seatsError) throw seatsError;
+            if (seatsError) {
+                console.error('좌석 삽입 실패:', seatsError);
+                throw seatsError;
+            }
         }
 
+        console.log('memberIdMap:', memberIdMap);
         return true;
     } catch (error) {
         console.error('Supabase 데이터 저장 실패:', error);

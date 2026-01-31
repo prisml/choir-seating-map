@@ -8,10 +8,7 @@ import {
     loadFromJSON,
     exportAsCSV,
 } from '../utils/storage';
-import {
-    loadSeatingMapFromSupabase,
-    saveSeatingMapToSupabase,
-} from '../services/seatingService';
+import { loadSeatingMapFromSupabase, saveSeatingMapToSupabase } from '../services/seatingService';
 
 interface DataManagerProps {
     data: SeatingMap;
@@ -22,7 +19,7 @@ interface DataManagerProps {
 export default function DataManager({ data, onLoadData, onSaveSuccess }: DataManagerProps) {
     const { user } = useAuth();
     const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(
-        null
+        null,
     );
     const [cloudLoading, setCloudLoading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -73,7 +70,7 @@ export default function DataManager({ data, onLoadData, onSaveSuccess }: DataMan
         } catch (error) {
             showMessage(
                 error instanceof Error ? error.message : '파일 로드에 실패했습니다',
-                'error'
+                'error',
             );
         }
 

@@ -158,72 +158,83 @@ export default function HomePage() {
                         </div>
                     </div>
                 ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* 좌석 배치도 */}
-                    <div className="lg:col-span-2">
-                        <div className="bg-white rounded-lg shadow-lg p-6">
-                            <div className="flex justify-between items-center mb-6">
-                                <h2 className="text-2xl font-bold text-gray-800">좌석 배치도</h2>
-                                <button
-                                    onClick={() => setShowLayoutEditor(true)}
-                                    className="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 font-semibold text-sm"
-                                >
-                                    🎹 레이아웃 설정
-                                </button>
-                            </div>
-                            {Object.keys(seatingMap.sections).length === 0 ? (
-                                <div className="text-center py-12 text-gray-500">
-                                    <p className="text-4xl mb-4">🎹</p>
-                                    <p className="text-lg font-semibold mb-2">좌석 배치가 없습니다</p>
-                                    <p className="text-sm">위의 "레이아웃 설정" 버튼을 눌러 섹션을 추가하거나,</p>
-                                    <p className="text-sm">오른쪽 데이터 관리에서 클라우드/로컬 데이터를 불러오세요.</p>
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        {/* 좌석 배치도 */}
+                        <div className="lg:col-span-2">
+                            <div className="bg-white rounded-lg shadow-lg p-6">
+                                <div className="flex justify-between items-center mb-6">
+                                    <h2 className="text-2xl font-bold text-gray-800">
+                                        좌석 배치도
+                                    </h2>
+                                    <button
+                                        onClick={() => setShowLayoutEditor(true)}
+                                        className="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 font-semibold text-sm"
+                                    >
+                                        🎹 레이아웃 설정
+                                    </button>
                                 </div>
-                            ) : (
-                            <div className="space-y-8">
-                                {Object.keys(seatingMap.sections).map((section) => (
-                                    <SeatingGrid
-                                        key={section}
-                                        section={section}
-                                        rows={seatingMap.sections[section].rows}
-                                        seats={seatingMap.seats[section] || {}}
-                                        members={seatingMap.members}
-                                        onSeatClick={handleSeatClick}
-                                        isSelected={selectedSeat?.section === section}
-                                    />
-                                ))}
+                                {Object.keys(seatingMap.sections).length === 0 ? (
+                                    <div className="text-center py-12 text-gray-500">
+                                        <p className="text-4xl mb-4">🎹</p>
+                                        <p className="text-lg font-semibold mb-2">
+                                            좌석 배치가 없습니다
+                                        </p>
+                                        <p className="text-sm">
+                                            위의 "레이아웃 설정" 버튼을 눌러 섹션을 추가하거나,
+                                        </p>
+                                        <p className="text-sm">
+                                            오른쪽 데이터 관리에서 클라우드/로컬 데이터를
+                                            불러오세요.
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-8">
+                                        {Object.keys(seatingMap.sections).map((section) => (
+                                            <SeatingGrid
+                                                key={section}
+                                                section={section}
+                                                rows={seatingMap.sections[section].rows}
+                                                seats={seatingMap.seats[section] || {}}
+                                                members={seatingMap.members}
+                                                onSeatClick={handleSeatClick}
+                                                isSelected={selectedSeat?.section === section}
+                                            />
+                                        ))}
+                                    </div>
+                                )}
                             </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* 사이드바 - 멤버 선택 및 데이터 관리 */}
-                    <div className="lg:col-span-1 space-y-6">
-                        {/* 데이터 관리 */}
-                        <div className="bg-white rounded-lg shadow-lg p-6">
-                            <h2 className="text-2xl font-bold mb-6 text-gray-800">
-                                📊 데이터 관리
-                            </h2>
-                            <DataManager
-                                data={seatingMap}
-                                onLoadData={setSeatingMap}
-                                onSaveSuccess={() => {
-                                    // 저장 성공 후 처리 (필요시)
-                                }}
-                            />
                         </div>
 
-                        {/* 멤버 선택 */}
-                        <div className="bg-white rounded-lg shadow-lg p-6">
-                            <h2 className="text-2xl font-bold mb-6 text-gray-800">👥 멤버 배정</h2>
-                            <MemberSelector
-                                members={seatingMap.members}
-                                selectedSeat={selectedSeat}
-                                onMemberSelect={handleMemberSelect}
-                                onClear={() => setSelectedSeat(null)}
-                            />
+                        {/* 사이드바 - 멤버 선택 및 데이터 관리 */}
+                        <div className="lg:col-span-1 space-y-6">
+                            {/* 데이터 관리 */}
+                            <div className="bg-white rounded-lg shadow-lg p-6">
+                                <h2 className="text-2xl font-bold mb-6 text-gray-800">
+                                    📊 데이터 관리
+                                </h2>
+                                <DataManager
+                                    data={seatingMap}
+                                    onLoadData={setSeatingMap}
+                                    onSaveSuccess={() => {
+                                        // 저장 성공 후 처리 (필요시)
+                                    }}
+                                />
+                            </div>
+
+                            {/* 멤버 선택 */}
+                            <div className="bg-white rounded-lg shadow-lg p-6">
+                                <h2 className="text-2xl font-bold mb-6 text-gray-800">
+                                    👥 멤버 배정
+                                </h2>
+                                <MemberSelector
+                                    members={seatingMap.members}
+                                    selectedSeat={selectedSeat}
+                                    onMemberSelect={handleMemberSelect}
+                                    onClear={() => setSelectedSeat(null)}
+                                />
+                            </div>
                         </div>
                     </div>
-                </div>
                 )}
             </main>
 
