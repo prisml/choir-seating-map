@@ -119,6 +119,27 @@ export default function HomePage() {
         setSelectedSeat(null);
     };
 
+    const handleRemoveMember = () => {
+        if (!selectedSeat) return;
+
+        const { section, row, seat } = selectedSeat;
+        const seatKey = `Seat${seat}`;
+
+        setSeatingMap((prev) => {
+            const newSeats = { ...prev.seats };
+            if (newSeats[section]?.[row]?.[seatKey]) {
+                const newRowSeats = { ...newSeats[section][row] };
+                delete newRowSeats[seatKey];
+                newSeats[section] = {
+                    ...newSeats[section],
+                    [row]: newRowSeats,
+                };
+            }
+            return { ...prev, seats: newSeats };
+        });
+        setSelectedSeat(null);
+    };
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
             <header className="bg-white shadow-md">
@@ -229,8 +250,14 @@ export default function HomePage() {
                                 <MemberSelector
                                     members={seatingMap.members}
                                     selectedSeat={selectedSeat}
+                                    currentMemberId={
+                                        selectedSeat
+                                            ? seatingMap.seats[selectedSeat.section]?.[selectedSeat.row]?.[`Seat${selectedSeat.seat}`] || null
+                                            : null
+                                    }
                                     onMemberSelect={handleMemberSelect}
                                     onClear={() => setSelectedSeat(null)}
+                                    onRemoveMember={handleRemoveMember}
                                 />
                             </div>
                         </div>
