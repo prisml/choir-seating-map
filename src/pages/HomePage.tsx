@@ -252,7 +252,9 @@ export default function HomePage() {
                                     selectedSeat={selectedSeat}
                                     currentMemberId={
                                         selectedSeat
-                                            ? seatingMap.seats[selectedSeat.section]?.[selectedSeat.row]?.[`Seat${selectedSeat.seat}`] || null
+                                            ? seatingMap.seats[selectedSeat.section]?.[
+                                                  selectedSeat.row
+                                              ]?.[`Seat${selectedSeat.seat}`] || null
                                             : null
                                     }
                                     onMemberSelect={handleMemberSelect}

@@ -40,13 +40,16 @@ export default function MemberSelector({
     // 선택된 파트의 멤버들
     const membersByPart = useMemo(() => {
         if (!selectedPart) return {};
-        return Object.values(members).reduce((acc, member) => {
-            if (member.part === selectedPart) {
-                if (!acc[member.group]) acc[member.group] = [];
-                acc[member.group].push(member);
-            }
-            return acc;
-        }, {} as Record<string, (typeof members)[string][]>);
+        return Object.values(members).reduce(
+            (acc, member) => {
+                if (member.part === selectedPart) {
+                    if (!acc[member.group]) acc[member.group] = [];
+                    acc[member.group].push(member);
+                }
+                return acc;
+            },
+            {} as Record<string, (typeof members)[string][]>,
+        );
     }, [selectedPart, members]);
 
     const filteredMembers = useMemo(() => {
@@ -103,18 +106,26 @@ export default function MemberSelector({
                     </div>
 
                     {/* 현재 배정 상태 / 미리보기 */}
-                    <div className={`rounded-lg p-4 ${pendingMemberId ? 'bg-amber-50 border-2 border-amber-400' : currentMember ? 'bg-green-50 border-2 border-green-400' : 'bg-gray-50 border-2 border-gray-300'}`}>
+                    <div
+                        className={`rounded-lg p-4 ${pendingMemberId ? 'bg-amber-50 border-2 border-amber-400' : currentMember ? 'bg-green-50 border-2 border-green-400' : 'bg-gray-50 border-2 border-gray-300'}`}
+                    >
                         {pendingMemberId ? (
                             <>
                                 <p className="text-xs text-amber-600 font-bold mb-1">📝 미리보기</p>
                                 <p className="font-bold text-gray-800">{pendingMember?.name}</p>
-                                <p className="text-sm text-gray-600">{pendingMember?.part} · {pendingMember?.group}조</p>
+                                <p className="text-sm text-gray-600">
+                                    {pendingMember?.part} · {pendingMember?.group}조
+                                </p>
                             </>
                         ) : currentMember ? (
                             <>
-                                <p className="text-xs text-green-600 font-bold mb-1">✅ 현재 배정</p>
+                                <p className="text-xs text-green-600 font-bold mb-1">
+                                    ✅ 현재 배정
+                                </p>
                                 <p className="font-bold text-gray-800">{currentMember.name}</p>
-                                <p className="text-sm text-gray-600">{currentMember.part} · {currentMember.group}조</p>
+                                <p className="text-sm text-gray-600">
+                                    {currentMember.part} · {currentMember.group}조
+                                </p>
                             </>
                         ) : (
                             <p className="text-gray-500 text-sm">배정된 멤버 없음</p>
@@ -214,7 +225,7 @@ export default function MemberSelector({
                                 ✅ 확인
                             </button>
                         )}
-                        
+
                         <div className="flex gap-2">
                             {/* 비우기 버튼 (현재 배정된 멤버가 있을 때만) */}
                             {currentMember && (
