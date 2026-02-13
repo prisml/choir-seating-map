@@ -17,7 +17,7 @@
 |-------|------|------|
 | **Phase 1** | ✅ 완료 | 프로젝트 초기 설정, 좌석 시각화, 좌석 클릭 → 파트/조/멤버 배정 기본 워크플로우 |
 | **Phase 2** | ✅ 완료 | JSON 저장/로드, 레이아웃 커스터마이징, 멤버 관리 CRUD |
-| **Phase 3** | 🔜 예정 | Supabase 인증 및 멤버 동기화 |
+| **Phase 3** | ✅ 완료 | Supabase 인증 (로그인/회원가입), 클라우드 데이터 동기화, 멤버 배정 UX 개선 |
 | **Phase 4** | 📋 백로그 | PDF/이미지 출력, 출석 체크, 고급 검색 기능 |
 
 ## 주요 기능
@@ -25,6 +25,8 @@
 ### 🎵 좌석 배치도
 - 섹션별 그리드 기반 좌석 시각화 (A석, B석 등)
 - 좌석 클릭 → SATB 파트 선택 → 멤버 배정 워크플로우
+- 멤버 선택 시 미리보기 → 확인/취소 플로우
+- 좌석 비우기 기능
 - 배정된 멤버 정보 실시간 표시
 
 ### 🎹 레이아웃 에디터
@@ -39,9 +41,15 @@
 - 파트별 멤버 통계 (Soprano, Alto, Tenor, Bass)
 
 ### 📊 데이터 관리
+- ☁️ 클라우드 저장/로드 (Supabase)
 - localStorage 자동 저장/로드
 - JSON 파일 다운로드/업로드
 - CSV 형식 내보내기
+
+### 🔐 인증
+- Supabase 기반 로그인/회원가입
+- 보호된 라우트 (로그인 필수)
+- 자동 세션 유지
 
 ## 데이터 구조
 
@@ -120,10 +128,18 @@ VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 src/
 ├── components/
 │   ├── SeatingGrid.tsx      # 좌석 배치도 그리드 컴포넌트
-│   ├── MemberSelector.tsx   # 멤버 선택/배정 컴포넌트
-│   ├── DataManager.tsx      # 데이터 저장/로드 관리
+│   ├── MemberSelector.tsx   # 멤버 선택/배정 (미리보기/확인/취소)
+│   ├── DataManager.tsx      # 데이터 저장/로드 관리 (클라우드/로컬/JSON/CSV)
 │   ├── LayoutEditor.tsx     # 레이아웃 편집 모달
-│   └── MemberManager.tsx    # 멤버 CRUD 관리
+│   ├── MemberManager.tsx    # 멤버 CRUD 관리
+│   └── ProtectedRoute.tsx   # 인증 보호 라우트
+├── hooks/
+│   └── useAuth.ts           # Supabase 인증 훅
+├── pages/
+│   ├── HomePage.tsx         # 메인 대시보드 페이지
+│   └── LoginPage.tsx        # 로그인/회원가입 페이지
+├── services/
+│   └── seatingService.ts    # Supabase 클라우드 동기화 서비스
 ├── types/
 │   ├── index.ts             # 앱 타입 정의 (SeatingMap, Member 등)
 │   └── database.ts          # Supabase 데이터베이스 타입
@@ -131,8 +147,9 @@ src/
 │   └── storage.ts           # 저장소 유틸리티 (localStorage, JSON, CSV)
 ├── lib/
 │   └── supabase.ts          # Supabase 클라이언트 설정
-├── App.tsx                  # 메인 앱 컴포넌트
+├── App.tsx                  # 라우팅 설정
 ├── main.tsx                 # 진입점
+├── vite-env.d.ts            # Vite 환경변수 타입
 └── index.css                # 글로벌 스타일 (TailwindCSS)
 ```
 
@@ -143,17 +160,13 @@ src/
 
 ## TODO
 
-### 🔜 다음 단계 (Phase 3)
-- [ ] Supabase 인증 연동 (로그인/회원가입)
-- [ ] 서버 데이터 동기화
-- [ ] 멀티 유저 지원
-
-### 📋 백로그 (Phase 4)
+### � 백로그 (Phase 4)
 - [ ] PDF/이미지 출력 기능
 - [ ] 출석 체크 기능
 - [ ] 멤버 대량 임포트/익스포트 (CSV)
 - [ ] 고급 검색 및 필터링
 - [ ] 드래그 앤 드롭 좌석 배정
+- [ ] 멀티 유저 지원
 
 ## 라이선스
 
