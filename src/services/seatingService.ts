@@ -221,7 +221,6 @@ export async function saveSeatingMapToSupabase(
         });
 
         if (seatsToInsert.length > 0) {
-            console.log('좌석 데이터 삽입 시도:', JSON.stringify(seatsToInsert, null, 2));
             const { error: seatsError } = await supabase.from('seats').insert(seatsToInsert);
 
             if (seatsError) {
@@ -230,7 +229,6 @@ export async function saveSeatingMapToSupabase(
             }
         }
 
-        console.log('memberIdMap:', memberIdMap);
         return true;
     } catch (error) {
         console.error('Supabase 데이터 저장 실패:', error);
