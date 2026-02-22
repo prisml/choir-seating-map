@@ -1,4 +1,4 @@
-import { SeatingMap } from '../types';
+import { SeatingMap, Member } from '../types';
 
 const STORAGE_KEY = 'choir_seating_map_data';
 
@@ -69,6 +69,160 @@ export const loadFromJSON = (file: File): Promise<SeatingMap> => {
         reader.readAsText(file);
     });
 };
+
+/**
+ * 멤버 목록을 CSV 파일로 익스포트
+ */
+export const exportMembersAsCSV = (
+    members: Record<string, Member>,
+    filename = 'members.csv',
+): void => {
+    try {
+        const BOM = '\uFEFF';
+        let csv = BOM + '이름,파트,조\n';
+
+        Object.values(members)
+            .sort((a, b) => {
+                const partOrder = ['Soprano', 'Alto', 'Tenor', 'Bass'];
+                const partDiff = partOrder.indexOf(a.part) - partOrder.indexOf(b.part);
+                if (partDiff !== 0) return partDiff;
+                const groupDiff = parseInt(a.group) - parseInt(b.group);
+                if (groupDiff !== 0) return groupDiff;
+                return a.name.localeCompare(b.name);
+            })
+            .forEach((member) => {
+                csv += `"${member.name}",${member.part},${member.group}\n`;
+            });
+
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    } catch (error) {
+        console.error('멤버 CSV 익스포트 실패:', error);
+        throw new Error('멤버 CSV 익스포트에 실패했습니다');
+    }
+};
+
+/**
+ * CSV 파일에서 멤버 목록 임포트
+ * CSV 형식: 이름,파트,조 (헤더 포함)
+ * 파트 값: Soprano, Alto, Tenor, Bass
+ */
+export const importMembersFromCSV = (
+    file: File,
+): Promise<{ members: Record<string, Member>; count: number; errors: string[] }> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const content = (e.target?.result as string).replace(/^\uFEFF/, '');
+                const lines = content.split(/\r?\n/).filter((line) => line.trim());
+
+                if (lines.length < 2) {
+                    reject(new Error('CSV 파일에 데이터가 없습니다'));
+                    return;
+                }
+
+                const validParts = ['Soprano', 'Alto', 'Tenor', 'Bass'];
+                const members: Record<string, Member> = {};
+                const errors: string[] = [];
+                let count = 0;
+
+                // 첫 줄은 헤더, 두 번째 줄부터 데이터
+                for (let i = 1; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    if (!line) continue;
+
+                    // CSV 파싱 (쌍따옴표 처리)
+                    const fields = parseCSVLine(line);
+
+                    if (fields.length < 3) {
+                        errors.push(`${i + 1}번째 줄: 필드가 부족합니다 (이름,파트,조 필요)`);
+                        continue;
+                    }
+
+                    const [name, part, group] = fields.map((f) => f.trim());
+
+                    if (!name) {
+                        errors.push(`${i + 1}번째 줄: 이름이 비어있습니다`);
+                        continue;
+                    }
+
+                    if (!validParts.includes(part)) {
+                        errors.push(
+                            `${i + 1}번째 줄: "${part}"는 유효하지 않은 파트입니다 (Soprano/Alto/Tenor/Bass)`,
+                        );
+                        continue;
+                    }
+
+                    if (!group || isNaN(parseInt(group))) {
+                        errors.push(`${i + 1}번째 줄: "${group}"는 유효하지 않은 조 번호입니다`);
+                        continue;
+                    }
+
+                    const id = `m${Date.now()}${Math.random().toString(36).substr(2, 5)}`;
+                    members[id] = {
+                        id,
+                        name,
+                        part: part as Member['part'],
+                        group,
+                    };
+                    count++;
+                }
+
+                resolve({ members, count, errors });
+            } catch (error) {
+                reject(new Error('CSV 파일 파싱에 실패했습니다'));
+            }
+        };
+        reader.onerror = () => {
+            reject(new Error('파일 읽기에 실패했습니다'));
+        };
+        reader.readAsText(file);
+    });
+};
+
+/**
+ * CSV 한 줄 파싱 (쌍따옴표 지원)
+ */
+function parseCSVLine(line: string): string[] {
+    const fields: string[] = [];
+    let current = '';
+    let inQuotes = false;
+
+    for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        if (inQuotes) {
+            if (char === '"') {
+                if (i + 1 < line.length && line[i + 1] === '"') {
+                    current += '"';
+                    i++;
+                } else {
+                    inQuotes = false;
+                }
+            } else {
+                current += char;
+            }
+        } else {
+            if (char === '"') {
+                inQuotes = true;
+            } else if (char === ',') {
+                fields.push(current);
+                current = '';
+            } else {
+                current += char;
+            }
+        }
+    }
+    fields.push(current);
+    return fields;
+}
 
 /**
  * 배치도를 CSV 형식으로 내보내기

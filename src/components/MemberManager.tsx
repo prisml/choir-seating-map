@@ -1,5 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { Member } from '../types';
+import { exportMembersAsCSV, importMembersFromCSV } from '../utils/storage';
 
 interface MemberManagerProps {
     members: Record<string, Member>;
@@ -59,6 +60,52 @@ export default function MemberManager({ members, onUpdateMembers }: MemberManage
         const newMembers = { ...members };
         delete newMembers[memberId];
         onUpdateMembers(newMembers);
+    };
+
+    // CSV 관련
+    const csvInputRef = useRef<HTMLInputElement>(null);
+    const [importResult, setImportResult] = useState<{
+        count: number;
+        errors: string[];
+    } | null>(null);
+
+    const handleExportCSV = () => {
+        const timestamp = new Date().toISOString().split('T')[0];
+        exportMembersAsCSV(members, `members-${timestamp}.csv`);
+    };
+
+    const handleImportCSV = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        try {
+            const { members: importedMembers, count, errors } = await importMembersFromCSV(file);
+
+            if (count === 0) {
+                setImportResult({
+                    count: 0,
+                    errors: errors.length > 0 ? errors : ['유효한 멤버 데이터가 없습니다'],
+                });
+                return;
+            }
+
+            // 기존 멤버와 병합
+            const newMembers = { ...members, ...importedMembers };
+            onUpdateMembers(newMembers);
+            setImportResult({ count, errors });
+
+            // 3초 후 결과 메시지 숨기기
+            setTimeout(() => setImportResult(null), 5000);
+        } catch (error) {
+            setImportResult({
+                count: 0,
+                errors: [error instanceof Error ? error.message : 'CSV 임포트 실패'],
+            });
+        }
+
+        if (csvInputRef.current) {
+            csvInputRef.current.value = '';
+        }
     };
 
     // 멤버 통계
@@ -124,6 +171,58 @@ export default function MemberManager({ members, onUpdateMembers }: MemberManage
                     ➕ 멤버 추가
                 </button>
             </div>
+
+            {/* CSV 임포트/익스포트 */}
+            <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                    onClick={handleExportCSV}
+                    disabled={Object.keys(members).length === 0}
+                    className="flex-1 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    📤 멤버 CSV 내보내기
+                </button>
+                <button
+                    onClick={() => csvInputRef.current?.click()}
+                    className="flex-1 px-4 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 font-semibold"
+                >
+                    📥 멤버 CSV 가져오기
+                </button>
+                <input
+                    ref={csvInputRef}
+                    type="file"
+                    accept=".csv"
+                    onChange={handleImportCSV}
+                    className="hidden"
+                />
+            </div>
+
+            {/* 임포트 결과 메시지 */}
+            {importResult && (
+                <div
+                    className={`p-3 rounded-lg text-sm ${
+                        importResult.count > 0
+                            ? 'bg-green-100 border-2 border-green-400 text-green-800'
+                            : 'bg-red-100 border-2 border-red-400 text-red-800'
+                    }`}
+                >
+                    {importResult.count > 0 && (
+                        <p className="font-bold">✅ {importResult.count}명의 멤버를 가져왔습니다</p>
+                    )}
+                    {importResult.errors.length > 0 && (
+                        <div className="mt-1">
+                            <p className="font-bold">⚠️ 오류:</p>
+                            <ul className="list-disc list-inside">
+                                {importResult.errors.slice(0, 5).map((err, i) => (
+                                    <li key={i}>{err}</li>
+                                ))}
+                                {importResult.errors.length > 5 && (
+                                    <li>...외 {importResult.errors.length - 5}건</li>
+                                )}
+                            </ul>
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* 멤버 목록 */}
             <div className="space-y-2 max-h-96 overflow-y-auto">
